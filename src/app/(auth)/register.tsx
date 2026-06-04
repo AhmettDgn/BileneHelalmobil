@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { signUpWithEmail } from '@/features/auth/authService';
+import { signUpWithEmail, signInWithGoogle } from '@/features/auth/authService';
 import { ThemedScreen } from '@/components/ui/ThemedScreen';
 import { ThemeChip, ThemeChipText, ThemePanel } from '@/components/ui/ThemePanel';
 import { APP_THEME } from '@/theme/app-theme';
@@ -20,6 +20,19 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  async function handleGoogleRegister() {
+    setGoogleLoading(true);
+    try {
+      const ok = await signInWithGoogle();
+      if (ok) router.replace('/(dashboard)');
+    } catch (e: any) {
+      Alert.alert('Google Kayıt Hatası', e.message ?? 'Bir hata oluştu.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
 
   async function handleRegister() {
     if (!email.trim() || !password.trim()) {
@@ -106,13 +119,33 @@ export default function RegisterScreen() {
 
             <TouchableOpacity
               onPress={handleRegister}
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full rounded-[22px] bg-accent-orange py-4 items-center"
             >
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
                 <Text className="text-base font-semibold text-white">Hesap Oluştur</Text>
+              )}
+            </TouchableOpacity>
+
+            <View className="flex-row items-center gap-3">
+              <View className="flex-1 h-px bg-line-warm" />
+              <Text className="text-sm text-ink-soft">veya</Text>
+              <View className="flex-1 h-px bg-line-warm" />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleGoogleRegister}
+              disabled={loading || googleLoading}
+              className="w-full rounded-[22px] border border-accent-rose/20 bg-surface-warm-soft py-4 items-center"
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={APP_THEME.warm.primary} />
+              ) : (
+                <Text className="text-base font-semibold text-accent-rose">
+                  Google ile Kayıt Ol
+                </Text>
               )}
             </TouchableOpacity>
 

@@ -803,3 +803,56 @@ Bu nedenle mobil uygulamanın en güvenli teknik omurgası şudur:
 - aynı RPC fonksiyonları
 - yeni mobil UI katmanı
 - yeni mobil navigation ve local session persistence katmanı
+
+## 17. Mobil Geliştirme Ortamı ve Çalıştırma
+
+Mobil uygulama **Expo SDK 54 + React Native 0.81 + Expo Router + NativeWind v4** üzerine kuruludur.
+Çalışan ve doğrulanmış kurulum referansı:
+
+### Paket yöneticisi: npm (zorunlu)
+
+- Bu proje **npm** ile yönetilir; tek kilit dosyası `package-lock.json`'dır.
+- **`pnpm` kullanma.** pnpm'in varsayılan izole/symlink `node_modules` düzeni Metro modül
+  çözümlemesini bozar ve uygulama açılışta **boş/yarım ekran** verir.
+- `pnpm-lock.yaml` görürsen sil, `node_modules`'ı sil ve `npm install` çalıştır.
+- Hızlı tanı: `node_modules/.pnpm` klasörü VARSA kurulum yanlıştır (pnpm). Üst düzey paketler
+  symlink değil gerçek klasör olmalı.
+
+### Ortam değişkenleri
+
+`.env.local` dosyası gereklidir ve Expo yalnızca `EXPO_PUBLIC_` önekli değişkenleri istemciye verir:
+
+```
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+Bu değerler `src/lib/supabase/client.ts` içinde `process.env.EXPO_PUBLIC_*` ile okunur; eksikse
+Supabase client kurulurken hata verir.
+
+### Çalıştırma
+
+```bash
+npm install
+npx expo start -c      # -c: Metro cache temizler (kurulum/sürüm değişimi sonrası önerilir)
+```
+
+Ardından Expo Go (telefon), Android emülatör veya iOS simülatöründen aç. Açılış ekranı
+`src/app/index.tsx` (PIN ile katılım) tam render olmalıdır.
+
+### Sağlık kontrolü ve bundle doğrulaması
+
+- `npx tsc --noEmit` → tip kontrolü (0 hata olmalı).
+- `npx expo-doctor` → bağımlılık/SDK uyumu (18/18 geçmeli).
+- `npx expo export --platform android` → **Hermes bytecode** dahil tam bundle testi. Cihazda
+  açılmadan önceki en güçlü doğrulama budur; `.hbc` üretip EXIT 0 vermeli. (Yalnızca `tsc` veya
+  dev bundle, Hermes parse hatalarını yakalamaz.)
+
+### Bilinen tuzaklar (ayrıntı: `tasks/lessons.md` Kural 5–7)
+
+1. **Paket yöneticisi:** npm dışına çıkma (yukarıda).
+2. **Hermes + dinamik `import()`:** `@supabase/supabase-js` OpenTelemetry için değişken
+   argümanlı `import()` taşır; Hermes derleyemez. `babel.config.js`'teki scoped Babel eklentisi
+   bunu `@supabase` dosyalarında etkisiz hale getirir — bu eklenti kaldırılmamalıdır.
+3. **`babel-preset-expo` hoisting:** sürüm bump sonrası nest edilebilir; bu yüzden
+   `devDependencies`'te açıkça tutulur.

@@ -109,3 +109,31 @@ oyuncu lobi → soru → cevap → leaderboard → bitir) web + telefon eş zama
 
 **Doğrulama notu:** ÖNCE migration Supabase'e uygulanmalı (`npx supabase db push` ya da SQL Editor).
 Sonra web (host) + telefon (oyuncu) eş zamanlı uçtan uca test edilmeli.
+
+---
+
+## Faz 9 — Başlatma/Bundler Bozulması Düzeltmesi ✅ (2026-06-04)
+
+**Belirti:** Mobilde ekran tam gelmiyor; proje açılışta boş/yarım. ("proje bozulmuş olmalı ya
+da başlatmadan kaynaklı hata")
+
+**Teşhis (salt-okunur):** `tsc --noEmit` 0 hata; kod sağlam. İki ayrı kök neden bulundu:
+
+1. **Paket yöneticisi regresyonu.** Proje 23 Mayıs'ta npm ile kurulup tüm fazlar derlenmiş.
+   4 Haziran'da pnpm ile yeniden kurulmuş (`node_modules/.pnpm`, symlink bağımlılıklar,
+   `pnpm-lock.yaml`). pnpm'in izole düzeni Metro modül çözümlemesini bozdu. → [[Kural 5]]
+2. **Hermes dinamik `import()`.** `@supabase/supabase-js@2.106.1` OpenTelemetry için
+   `import(OTEL_PKG)` (değişken) taşıyor; Hermes parse edemiyor → `Invalid expression`. → [[Kural 6]]
+
+**Çözüm:**
+- [x] `pnpm-lock.yaml` + `node_modules` silindi, **npm** ile temiz kuruldu (`package-lock.json` korundu/yenilendi).
+- [x] `babel.config.js` — `@supabase` dosyalarında string-literal olmayan `import()` → `Promise.resolve(null)` (scoped Babel eklentisi).
+- [x] `expo-doctor` patch hizalaması: `expo ~54.0.35`, `expo-font ~14.0.12`, `expo-router ~6.0.24`, `react-native-worklets 0.5.1`; `app.json`'a `expo-font` config plugin.
+- [x] `babel-preset-expo ~54.0.11` devDependency olarak eklendi (hoisting). → [[Kural 7]]
+
+**Doğrulama (yapıldı):**
+- [x] `npx tsc --noEmit` → 0 hata.
+- [x] `npx expo-doctor` → **18/18 geçti, sorun yok**.
+- [x] `npx expo export --platform android --clear` → **Android Bundled (1406 modül)**, Hermes
+      bytecode üretildi (`entry-*.hbc`, ~4.38 MB), **EXIT 0**. Artık "Invalid expression" yok.
+- [ ] Son adım kullanıcıda: `npx expo start -c` → Expo Go / emülatörde açılış ekranı (PIN) gözle teyit.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { loadPlayerSession } from '@/lib/player-session';
 import type { PlayerSession } from '@/lib/player-session';
@@ -18,6 +18,33 @@ function GameContent({ session, gamePin }: { session: PlayerSession; gamePin: st
     session.gameSessionId,
     state?.gameStatus === 'completed' ? session.participantId : undefined
   );
+
+  const handleLeaveGame = () => {
+    Alert.alert(
+      'Yarışmadan Ayrıl',
+      'Bu yarışmadan ayrılmak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Ayrıl',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { supabase } = await import('@/lib/supabase/client');
+              const { clearPlayerSession } = await import('@/lib/player-session');
+              await supabase.from('participants').delete().eq('id', session.participantId);
+              await clearPlayerSession(gamePin);
+              router.replace('/');
+            } catch {
+              const { clearPlayerSession } = await import('@/lib/player-session');
+              await clearPlayerSession(gamePin);
+              router.replace('/');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (error) {
     return (
@@ -61,6 +88,8 @@ function GameContent({ session, gamePin }: { session: PlayerSession; gamePin: st
         gameSessionId={session.gameSessionId}
         participantId={session.participantId}
         syncState={state}
+        gamePin={gamePin}
+        onLeave={handleLeaveGame}
       />
     );
   }
@@ -69,9 +98,14 @@ function GameContent({ session, gamePin }: { session: PlayerSession; gamePin: st
     <ThemedScreen tone="night">
       <View className="flex-1 px-5 py-4 gap-4">
         <ThemePanel tone="night" variant="hero" className="gap-3 px-5 py-5">
-          <ThemeChip tone="night" accent="secondary" className="self-start">
-            <ThemeChipText tone="night" accent="secondary">Final</ThemeChipText>
-          </ThemeChip>
+          <View className="flex-row items-center justify-between">
+            <ThemeChip tone="night" accent="secondary" className="self-start">
+              <ThemeChipText tone="night" accent="secondary">Final</ThemeChipText>
+            </ThemeChip>
+            <TouchableOpacity onPress={handleLeaveGame}>
+              <Text className="text-sm font-semibold text-state-danger">Yarışmadan Ayrıl</Text>
+            </TouchableOpacity>
+          </View>
           <Text className="text-2xl font-bold text-white">Oyun Bitti</Text>
           <Text className="text-sm leading-6 text-slate-300">
             Final sıralaması hazır. Bu oturum için son puanlar aşağıda listeleniyor.

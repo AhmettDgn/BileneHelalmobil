@@ -18,17 +18,62 @@ import { LeaderboardView } from '@/features/stats/components/LeaderboardView';
 import { ThemedScreen } from '@/components/ui/ThemedScreen';
 import { ThemeChip, ThemeChipText, ThemePanel } from '@/components/ui/ThemePanel';
 import { APP_THEME } from '@/theme/app-theme';
+import { supabase } from '@/lib/supabase/client';
+import { cn } from '@/lib/cn';
+
+const JOKERS = [
+  {
+    name: 'Melek Kanadı 👼',
+    type: 'good',
+    desc: 'Doğru bilirsen iki kat puan, bilmezsen kanatların kırılır!',
+    bg: 'bg-amber-500/10 border-amber-500/20',
+    text: 'text-amber-500',
+  },
+  {
+    name: 'Ters Yazı 🔄',
+    type: 'bad',
+    desc: 'Sorunun harfleri tersine döndü! Tersten okuyup anlayabilecek misin?',
+    bg: 'bg-rose-500/10 border-rose-500/20',
+    text: 'text-rose-500',
+  },
+  {
+    name: 'Çifte Şans 🎭',
+    type: 'good',
+    desc: 'İki seçeneğe birden basabilirsin! Çift dikiş, sağlam iş.',
+    bg: 'bg-emerald-500/10 border-emerald-500/20',
+    text: 'text-emerald-500',
+  },
+  {
+    name: 'Çamur At 💩',
+    type: 'bad',
+    desc: 'Ekranına çamur sıçradı, seçenekler hâlâ okunuyor ama dikkat et!',
+    bg: 'bg-amber-800/10 border-amber-800/20',
+    text: 'text-amber-600',
+  },
+  {
+    name: 'Zaman Kilidi ⏰',
+    type: 'special',
+    desc: 'Rakiplerinin zamanını dondurdun! 5 saniye boyunca sadece sen cevap verebilirsin!',
+    bg: 'bg-cyan-500/10 border-cyan-500/20',
+    text: 'text-cyan-500',
+  },
+];
 
 interface Props {
   gameSessionId: string;
   participantId: string;
   syncState: GameSyncState;
+  gamePin: string;
+  onLeave: () => void;
 }
 
-export function PlayerGameView({ gameSessionId, participantId, syncState }: Props) {
+export function PlayerGameView({ gameSessionId, participantId, syncState, gamePin, onLeave }: Props) {
   const [gameState, setGameState] = useState<PlayableGameState | null>(null);
+  const [funMode, setFunMode] = useState(false);
+  const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [lockedIndex, setLockedIndex] = useState<number | null>(null);
+  const [lockedIndex2, setLockedIndex2] = useState<number | null>(null);
   const lastQuestionId = useRef<string | null>(null);
 
   const leaderboard = useLeaderboard(
@@ -55,6 +100,15 @@ export function PlayerGameView({ gameSessionId, participantId, syncState }: Prop
     try {
       const data = await getPlayableGameState(gameSessionId, participantId);
       setGameState(data);
+      setFunMode(data.fun_mode ?? false);
+
+      // Fetch other participant IDs for Zaman Kilidi
+      const { data: participantsData, error } = await supabase.rpc('get_lobby_participants', {
+        p_game_session_id: gameSessionId,
+      });
+      if (participantsData && !error) {
+        setParticipantIds((participantsData as any[]).map((p) => p.id));
+      }
     } catch {
       // Sessizce geç.
     }
@@ -64,6 +118,7 @@ export function PlayerGameView({ gameSessionId, participantId, syncState }: Prop
     if (syncState.activeQuestionId && syncState.activeQuestionId !== lastQuestionId.current) {
       lastQuestionId.current = syncState.activeQuestionId;
       setLockedIndex(null);
+      setLockedIndex2(null);
       loadGameState();
     }
   }, [syncState.activeQuestionId, loadGameState]);
@@ -79,13 +134,70 @@ export function PlayerGameView({ gameSessionId, participantId, syncState }: Prop
     );
     if (existing) {
       setLockedIndex(existing.selected_option_index);
+      setLockedIndex2(existing.selected_option_index_2 ?? null);
     }
   }, [gameState, syncState.activeQuestionId]);
 
-  async function handleSelect(optionIndex: number) {
-    if (!syncState.activeQuestionId || lockedIndex !== null) return;
+  // Hashing and Joker Selection logic
+  const myJokerIndex = funMode && activeQuestion
+    ? (() => {
+        const str = (participantId + activeQuestion.id).toLowerCase();
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash * 33) + str.charCodeAt(i)) >>> 0;
+        }
+        return hash % 5;
+      })()
+    : -1;
+
+  const anyoneHasTimeLock = funMode && activeQuestion
+    ? participantIds.some((id) => {
+        const str = (id + activeQuestion.id).toLowerCase();
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash * 33) + str.charCodeAt(i)) >>> 0;
+        }
+        return (hash % 5) === 4;
+      })
+    : false;
+
+  const iHaveTimeLock = myJokerIndex === 4;
+
+  const [timeLockRemaining, setTimeLockRemaining] = useState(0);
+
+  useEffect(() => {
+    if (syncState.currentPhase !== 'question' || !anyoneHasTimeLock || iHaveTimeLock || !syncState.phaseStartedAt) {
+      setTimeLockRemaining(0);
+      return;
+    }
+
+    const calculateRemaining = () => {
+      const elapsed = Date.now() - new Date(syncState.phaseStartedAt!).getTime();
+      const remaining = Math.max(0, 5000 - elapsed);
+      return Math.ceil(remaining / 1000);
+    };
+
+    const initialRemaining = calculateRemaining();
+    setTimeLockRemaining(initialRemaining);
+
+    if (initialRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      const rem = calculateRemaining();
+      setTimeLockRemaining(rem);
+      if (rem <= 0) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [syncState.phaseStartedAt, anyoneHasTimeLock, iHaveTimeLock, syncState.currentPhase]);
+
+  async function handleSelect(optionIndex: number, optionIndex2: number | null = null) {
+    if (!syncState.activeQuestionId || lockedIndex !== null || timeLockRemaining > 0) return;
     setSubmitting(true);
     setLockedIndex(optionIndex);
+    setLockedIndex2(optionIndex2);
     try {
       const responseTimeMs = syncState.phaseEndsAt && activeQuestion
         ? Math.max(
@@ -99,10 +211,12 @@ export function PlayerGameView({ gameSessionId, participantId, syncState }: Prop
         participantId,
         syncState.activeQuestionId,
         optionIndex,
-        responseTimeMs
+        responseTimeMs,
+        optionIndex2
       );
     } catch {
       setLockedIndex(null);
+      setLockedIndex2(null);
     } finally {
       setSubmitting(false);
     }
@@ -194,19 +308,50 @@ export function PlayerGameView({ gameSessionId, participantId, syncState }: Prop
           <TimerBar progress={progress} remainingMs={remainingMs} />
         </ThemePanel>
 
-        <ThemePanel tone="night" className="gap-4 px-5 py-5">
+        {funMode && activeQuestion && JOKERS[myJokerIndex] ? (
+          <ThemePanel tone="night" variant="soft" className={cn("gap-2 px-5 py-4 border", JOKERS[myJokerIndex].bg)}>
+            <View className="flex-row items-center justify-between">
+              <Text className={cn("font-bold text-base", JOKERS[myJokerIndex].text)}>
+                Joker: {JOKERS[myJokerIndex].name}
+              </Text>
+              <ThemeChip tone="night" accent={JOKERS[myJokerIndex].type === 'good' ? 'primary' : 'secondary'}>
+                <ThemeChipText tone="night" accent={JOKERS[myJokerIndex].type === 'good' ? 'primary' : 'secondary'}>
+                  {JOKERS[myJokerIndex].type === 'good' ? 'Avantaj' : JOKERS[myJokerIndex].type === 'bad' ? 'Dezavantaj' : 'Özel'}
+                </ThemeChipText>
+              </ThemeChip>
+            </View>
+            <Text className="text-sm leading-5 text-slate-300">{JOKERS[myJokerIndex].desc}</Text>
+          </ThemePanel>
+        ) : null}
+
+        <ThemePanel tone="night" className="gap-4 px-5 py-5 relative" style={{ overflow: 'hidden' }}>
+          {timeLockRemaining > 0 ? (
+            <View className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/90 rounded-[24px] p-5">
+              <Text className="text-5xl mb-2">❄️</Text>
+              <Text className="text-lg font-bold text-accent-cyan tracking-wide uppercase">Zaman Donduruldu!</Text>
+              <Text className="text-xs text-center text-slate-400 mt-1">
+                Rakiplerinden biri Zaman Kilidi jokerini kullandı! Butonların {timeLockRemaining} saniye boyunca kilitli kalacak.
+              </Text>
+            </View>
+          ) : null}
+
           <ThemeChip tone="night" accent="secondary" className="self-start">
             <ThemeChipText tone="night" accent="secondary">
               Soru Metni
             </ThemeChipText>
           </ThemeChip>
-          <Text className="text-2xl font-bold leading-8 text-white">{activeQuestion.text}</Text>
+          <Text className="text-2xl font-bold leading-8 text-white">
+            {myJokerIndex === 1 ? activeQuestion.text.split('').reverse().join('') : activeQuestion.text}
+          </Text>
           <AnswerOptions
             options={activeQuestion.options}
             lockedIndex={lockedIndex}
+            lockedIndex2={lockedIndex2}
             submitting={submitting}
             isExpired={isExpired}
             onSelect={handleSelect}
+            isDoubleChance={myJokerIndex === 2}
+            isMudAt={myJokerIndex === 3}
           />
         </ThemePanel>
 

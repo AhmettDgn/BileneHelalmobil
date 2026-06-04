@@ -12,12 +12,14 @@ export interface PlayableQuestion {
 export interface ParticipantAnswer {
   question_id: string;
   selected_option_index: number;
+  selected_option_index_2?: number | null;
   is_correct: boolean;
   points_earned: number;
 }
 
 export interface PlayableGameState {
   quiz_title: string;
+  fun_mode?: boolean;
   active_question_id: string | null;
   questions: PlayableQuestion[];
   participant_answers: ParticipantAnswer[];
@@ -69,7 +71,8 @@ export async function submitAnswer(
   participantId: string,
   questionId: string,
   selectedOptionIndex: number,
-  responseTimeMs: number
+  responseTimeMs: number,
+  selectedOptionIndex2: number | null = null
 ): Promise<SubmitResult> {
   const { data, error } = await supabase.rpc('submit_player_answer', {
     p_game_session_id: gameSessionId,
@@ -77,6 +80,7 @@ export async function submitAnswer(
     p_question_id: questionId,
     p_selected_option_index: selectedOptionIndex,
     p_response_time_ms: Math.max(0, Math.round(responseTimeMs)),
+    p_selected_option_index_2: selectedOptionIndex2,
   });
   if (error) throw error;
   // submit_player_answer RETURNS TABLE → supabase-js dizi döndürür

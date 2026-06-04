@@ -14,6 +14,7 @@ import {
 import { router } from 'expo-router';
 import { createQuiz, updateQuiz } from '../quizService';
 import type { QuestionDraft, QuizWithQuestions } from '../quizService';
+import { AiQuestionGenerator } from './AiQuestionGenerator';
 import { ThemeChip, ThemeChipText, ThemePanel } from '@/components/ui/ThemePanel';
 import { APP_THEME } from '@/theme/app-theme';
 import { cn } from '@/lib/cn';
@@ -33,6 +34,7 @@ interface Props {
 export function QuizEditorForm({ existing }: Props) {
   const [title, setTitle] = useState(existing?.title ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
+  const [funMode, setFunMode] = useState(existing?.fun_mode ?? false);
   const [questions, setQuestions] = useState<QuestionDraft[]>(
     existing?.questions.map((q) => ({
       text: q.text,
@@ -82,6 +84,14 @@ export function QuizEditorForm({ existing }: Props) {
     ]);
   }
 
+  function applyGeneratedQuestions(drafts: QuestionDraft[], mode: 'append' | 'replace') {
+    if (mode === 'replace') {
+      setQuestions(drafts);
+    } else {
+      setQuestions((prev) => [...prev, ...drafts]);
+    }
+  }
+
   async function handleSave() {
     if (!title.trim()) {
       Alert.alert('Hata', 'Quiz başlığı gerekli.');
@@ -102,9 +112,9 @@ export function QuizEditorForm({ existing }: Props) {
     setSaving(true);
     try {
       if (existing) {
-        await updateQuiz(existing.id, title.trim(), description.trim(), questions);
+        await updateQuiz(existing.id, title.trim(), description.trim(), questions, funMode);
       } else {
-        await createQuiz(title.trim(), description.trim(), questions);
+        await createQuiz(title.trim(), description.trim(), questions, funMode);
       }
       router.replace('/(dashboard)');
     } catch (e: any) {
@@ -332,7 +342,39 @@ export function QuizEditorForm({ existing }: Props) {
                     multiline
                     textAlignVertical="top"
                   />
+                  <TouchableOpacity
+                    onPress={() => setFunMode(!funMode)}
+                    className={cn(
+                      "flex-row items-center justify-between rounded-[22px] border px-4 py-3.5 mt-2",
+                      funMode
+                        ? "border-accent-orange bg-accent-orange/10"
+                        : "border-accent-rose/[0.15] bg-white"
+                    )}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-base font-semibold text-ink-strong">Eğlence Modu 🥳</Text>
+                      <ThemeChip tone="warm" accent={funMode ? "primary" : "secondary"}>
+                        <ThemeChipText tone="warm" accent={funMode ? "primary" : "secondary"}>
+                          {funMode ? "Jokerler Açık" : "Kapalı"}
+                        </ThemeChipText>
+                      </ThemeChip>
+                    </View>
+                    <View
+                      className={cn(
+                        "w-12 h-6 rounded-full p-0.5 justify-center",
+                        funMode ? "bg-accent-orange items-end" : "bg-line-warm items-start"
+                      )}
+                    >
+                      <View className="w-5 h-5 rounded-full bg-white shadow" />
+                    </View>
+                  </TouchableOpacity>
                 </ThemePanel>
+
+                <AiQuestionGenerator
+                  onApply={applyGeneratedQuestions}
+                  defaultTimeLimitSeconds={20}
+                  defaultPoints={100}
+                />
 
                 <ThemePanel tone="warm" variant="soft" className="flex-row items-center justify-between px-5 py-4">
                   <View>

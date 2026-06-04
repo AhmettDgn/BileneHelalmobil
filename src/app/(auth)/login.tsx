@@ -41,8 +41,8 @@ export default function LoginScreen() {
   async function handleGoogleLogin() {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
-      router.replace('/(dashboard)');
+      const ok = await signInWithGoogle();
+      if (ok) router.replace('/(dashboard)');
     } catch (e: any) {
       Alert.alert('Google Giriş Hatası', e.message ?? 'Bir hata oluştu.');
     } finally {

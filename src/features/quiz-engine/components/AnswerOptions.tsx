@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { cn } from '@/lib/cn';
 import { APP_THEME } from '@/theme/app-theme';
@@ -40,29 +41,59 @@ const OPTION_STYLES = [
 interface Props {
   options: string[];
   lockedIndex: number | null;
+  lockedIndex2?: number | null;
   submitting: boolean;
   isExpired: boolean;
-  onSelect: (index: number) => void;
+  onSelect: (index: number, index2?: number | null) => void;
+  isDoubleChance?: boolean;
+  isMudAt?: boolean;
 }
 
-export function AnswerOptions({ options, lockedIndex, submitting, isExpired, onSelect }: Props) {
+export function AnswerOptions({
+  options,
+  lockedIndex,
+  lockedIndex2,
+  submitting,
+  isExpired,
+  onSelect,
+  isDoubleChance,
+  isMudAt,
+}: Props) {
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+
+  useEffect(() => {
+    setSelectedIndices([]);
+  }, [options]);
+
   const isLocked = lockedIndex !== null || isExpired;
+
+  const handlePress = (index: number) => {
+    if (isDoubleChance) {
+      if (selectedIndices.includes(index)) {
+        setSelectedIndices(selectedIndices.filter((x) => x !== index));
+      } else if (selectedIndices.length < 2) {
+        setSelectedIndices([...selectedIndices, index]);
+      }
+    } else {
+      onSelect(index);
+    }
+  };
 
   return (
     <View className="gap-3">
       {options.map((opt, i) => {
         const style = OPTION_STYLES[i % OPTION_STYLES.length];
-        const isSelected = lockedIndex === i;
+        const isSelected = lockedIndex === i || lockedIndex2 === i || selectedIndices.includes(i);
         const dimmed = isLocked && !isSelected;
 
         return (
           <TouchableOpacity
             key={i}
-            onPress={() => !isLocked && onSelect(i)}
+            onPress={() => !isLocked && handlePress(i)}
             disabled={isLocked || submitting}
             activeOpacity={0.88}
             className={cn(
-              'rounded-[24px] border px-4 py-4',
+              'rounded-[24px] border px-4 py-4 relative overflow-hidden',
               style.bg,
               style.border,
               isSelected ? 'border-white/[0.35] bg-white/10' : '',
@@ -82,13 +113,35 @@ export function AnswerOptions({ options, lockedIndex, submitting, isExpired, onS
                 <ActivityIndicator color={APP_THEME.night.primary} size="small" />
               ) : null}
 
-              {isSelected && !submitting ? (
+              {(lockedIndex === i || lockedIndex2 === i) && !submitting ? (
                 <Text className="text-sm font-semibold text-accent-cyan">Kilitli</Text>
               ) : null}
             </View>
+
+            {isMudAt && (
+              <View pointerEvents="none" className="absolute inset-0 overflow-hidden rounded-[24px]">
+                {i === 0 && <Text className="absolute top-1 left-4 text-2xl opacity-20">💩</Text>}
+                {i === 1 && <Text className="absolute bottom-1 right-6 text-3xl opacity-15">💩</Text>}
+                {i === 2 && <Text className="absolute top-2 right-8 text-2xl opacity-20">💩</Text>}
+                {i === 3 && <Text className="absolute bottom-2 left-10 text-2xl opacity-25">💩</Text>}
+                <View className="absolute inset-0 bg-[#5c4033]/[0.05]" />
+              </View>
+            )}
           </TouchableOpacity>
         );
       })}
+
+      {isDoubleChance && !isLocked && selectedIndices.length > 0 && (
+        <TouchableOpacity
+          onPress={() => onSelect(selectedIndices[0], selectedIndices[1] ?? null)}
+          disabled={submitting}
+          className="mt-2 rounded-[20px] bg-accent-orange py-3.5 items-center shadow-lg"
+        >
+          <Text className="text-sm font-semibold text-white">
+            {selectedIndices.length === 2 ? 'Çifte Şansı Kullan 🎭' : 'Tek Seçenek Gönder'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

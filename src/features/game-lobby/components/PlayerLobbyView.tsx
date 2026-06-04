@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
@@ -14,6 +14,9 @@ import { ThemedScreen } from '@/components/ui/ThemedScreen';
 import { ThemeChip, ThemeChipText, ThemePanel } from '@/components/ui/ThemePanel';
 import { APP_THEME } from '@/theme/app-theme';
 import { cn } from '@/lib/cn';
+import { supabase } from '@/lib/supabase/client';
+import { clearPlayerSession } from '@/lib/player-session';
+import { router } from 'expo-router';
 
 interface Props {
   gameSessionId: string;
@@ -48,18 +51,52 @@ export function PlayerLobbyView({
     }
   }
 
+  async function handleLeaveGame() {
+    Alert.alert(
+      'Yarışmadan Ayrıl',
+      'Bu yarışmadan ayrılmak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Ayrıl',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await supabase.from('participants').delete().eq('id', participantId);
+              await clearPlayerSession(gamePin);
+              router.replace('/');
+            } catch {
+              await clearPlayerSession(gamePin);
+              router.replace('/');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <ThemedScreen tone="night">
-      <View className="flex-1 px-5 py-4 gap-4">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+      >
         <ThemePanel tone="night" variant="hero" className="gap-5 px-5 py-5">
           <View className="flex-row items-start justify-between gap-3">
             <View className="flex-1 gap-2">
-              <ThemeChip tone="night" accent="primary" className="self-start">
-                <ThemeChipText tone="night" accent="primary">
-                  Bekleme Ekranı
-                </ThemeChipText>
-              </ThemeChip>
-              <Text className="text-3xl font-bold tracking-[4px] text-accent-cyan">
+              <View className="flex-row items-center justify-between">
+                <ThemeChip tone="night" accent="primary" className="self-start">
+                  <ThemeChipText tone="night" accent="primary">
+                    Bekleme Ekranı
+                  </ThemeChipText>
+                </ThemeChip>
+
+                <TouchableOpacity onPress={handleLeaveGame} activeOpacity={0.7} className="px-2 py-1">
+                  <Text className="text-xs font-bold text-state-danger uppercase tracking-[1px]">Ayrıl</Text>
+                </TouchableOpacity>
+              </View>
+              <Text className="text-3xl font-bold tracking-[4px] text-accent-cyan mt-1">
                 {gamePin}
               </Text>
               <Text className="text-sm leading-6 text-slate-300">
@@ -110,7 +147,7 @@ export function PlayerLobbyView({
           )}
         </ThemePanel>
 
-        <ThemePanel tone="night" variant="soft" className="flex-1 gap-4 px-5 py-5">
+        <ThemePanel tone="night" variant="soft" className="gap-4 px-5 py-5">
           <View className="flex-row items-center justify-between gap-3">
             <View>
               <Text className="text-xl font-semibold text-white">Katılımcılar</Text>
@@ -125,27 +162,17 @@ export function PlayerLobbyView({
             </ThemeChip>
           </View>
 
-          <FlatList
-            data={participants}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={{ gap: 10 }}
-            contentContainerStyle={{ gap: 10, paddingBottom: 12 }}
-            ListEmptyComponent={
-              <View className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-8">
-                <Text className="text-center text-sm text-slate-300">
-                  Henüz başka katılımcı yok.
-                </Text>
-              </View>
-            }
-            renderItem={({ item }) => (
+          <View className="flex-row flex-wrap justify-between gap-y-3">
+            {participants.map((item) => (
               <View
+                key={item.id}
                 className={cn(
-                  'flex-1 rounded-[20px] border px-3 py-3',
+                  'rounded-[20px] border px-3 py-3',
                   item.id === participantId
                     ? 'border-accent-cyan/25 bg-accent-cyan/10'
                     : 'border-white/10 bg-white/5'
                 )}
+                style={{ width: '48%' }}
               >
                 <Text
                   className={cn(
@@ -158,10 +185,17 @@ export function PlayerLobbyView({
                   {item.id === participantId ? ' (sen)' : ''}
                 </Text>
               </View>
+            ))}
+            {participants.length === 0 && (
+              <View className="w-full rounded-[22px] border border-white/10 bg-white/5 px-4 py-8">
+                <Text className="text-center text-sm text-slate-300">
+                  Henüz başka katılımcı yok.
+                </Text>
+              </View>
             )}
-          />
+          </View>
         </ThemePanel>
-      </View>
+      </ScrollView>
     </ThemedScreen>
   );
 }

@@ -11,5 +11,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // Mobil OAuth için PKCE: dönüşte `?code=...` gelir ve
+    // exchangeCodeForSession ile oturuma çevrilir (bkz. authService).
+    flowType: 'pkce',
   },
 });

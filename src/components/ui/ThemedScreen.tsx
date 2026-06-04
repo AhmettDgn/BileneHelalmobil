@@ -3,6 +3,7 @@ import { View, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
+import { useColorScheme } from 'nativewind';
 import { cn } from '@/lib/cn';
 import { APP_THEME, type ScreenTone } from '@/theme/app-theme';
 
@@ -20,9 +21,12 @@ export function ThemedScreen({
   contentClassName,
   ...props
 }: ThemedScreenProps) {
+  const { setColorScheme } = useColorScheme();
+
   useEffect(() => {
+    setColorScheme(tone === 'warm' ? 'light' : 'dark');
     void SystemUI.setBackgroundColorAsync(APP_THEME[tone].root);
-  }, [tone]);
+  }, [tone, setColorScheme]);
 
   const isWarm = tone === 'warm';
 

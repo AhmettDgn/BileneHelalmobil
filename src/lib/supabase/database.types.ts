@@ -19,6 +19,7 @@ export type Database = {
           duration_seconds: number | null;
           created_at: string;
           updated_at: string;
+          fun_mode: boolean;
         };
         Insert: {
           id?: string;
@@ -29,6 +30,7 @@ export type Database = {
           duration_seconds?: number | null;
           created_at?: string;
           updated_at?: string;
+          fun_mode?: boolean;
         };
         Update: {
           title?: string;
@@ -36,6 +38,7 @@ export type Database = {
           is_published?: boolean;
           duration_seconds?: number | null;
           updated_at?: string;
+          fun_mode?: boolean;
         };
         Relationships: [];
       };
@@ -224,6 +227,7 @@ export type Database = {
         Args: { p_game_session_id: string; p_participant_id?: string };
         Returns: {
           quiz_title: string;
+          fun_mode: boolean;
           active_question_id: string | null;
           questions: Array<{
             id: string;
@@ -248,6 +252,7 @@ export type Database = {
           p_question_id: string;
           p_selected_option_index: number;
           p_response_time_ms: number;
+          p_selected_option_index_2?: number | null;
         };
         Returns: Array<{
           accepted: boolean;

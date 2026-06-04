@@ -46,14 +46,15 @@ export async function getQuizWithQuestions(quizId: string): Promise<QuizWithQues
 export async function createQuiz(
   title: string,
   description: string,
-  questions: QuestionDraft[]
+  questions: QuestionDraft[],
+  funMode = false
 ): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Giriş yapılmamış.');
 
   const { data: quiz, error: quizError } = await supabase
     .from('quizzes')
-    .insert({ owner_id: user.id, title, description, is_published: false })
+    .insert({ owner_id: user.id, title, description, is_published: false, fun_mode: funMode })
     .select('id')
     .single();
   if (quizError) throw quizError;
@@ -72,11 +73,12 @@ export async function updateQuiz(
   quizId: string,
   title: string,
   description: string,
-  questions: QuestionDraft[]
+  questions: QuestionDraft[],
+  funMode = false
 ): Promise<void> {
   const { error: quizError } = await supabase
     .from('quizzes')
-    .update({ title, description })
+    .update({ title, description, fun_mode: funMode })
     .eq('id', quizId);
   if (quizError) throw quizError;
 
