@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/lib/supabase/client';
 import { useGameSync } from '@/features/quiz-engine/hooks/useGameSync';
@@ -19,6 +19,20 @@ interface SessionMeta {
 function HostContent({ gameSessionId, meta }: { gameSessionId: string; meta: SessionMeta }) {
   const { state, error } = useGameSync(gameSessionId);
   const finalLeaderboard = useLeaderboard(gameSessionId);
+  const [exiting, setExiting] = useState(false);
+
+  async function handleResetAndExit() {
+    setExiting(true);
+    try {
+      const { error } = await supabase.from('game_sessions').delete().eq('id', gameSessionId);
+      if (error) throw error;
+      router.replace('/(dashboard)');
+    } catch (e: any) {
+      Alert.alert('Hata', 'Oyun sıfırlanırken hata oluştu: ' + e.message);
+    } finally {
+      setExiting(false);
+    }
+  }
 
   if (error) {
     return (
@@ -70,6 +84,27 @@ function HostContent({ gameSessionId, meta }: { gameSessionId: string; meta: Ses
           <Text className="text-sm leading-6 text-slate-300">
             Tüm sorular tamamlandı. Final sıralamasını aşağıdan inceleyebilirsin.
           </Text>
+          
+          <View className="flex-row gap-2 mt-2">
+            <TouchableOpacity
+              onPress={handleResetAndExit}
+              disabled={exiting}
+              className="flex-1 rounded-[18px] bg-accent-rose py-3 items-center justify-center h-11"
+            >
+              {exiting ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text className="text-sm font-semibold text-white">Sıfırla ve Panele Dön</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => router.replace('/(dashboard)')}
+              className="flex-1 rounded-[18px] border border-slate-700 bg-slate-800 py-3 items-center justify-center h-11"
+            >
+              <Text className="text-sm font-semibold text-slate-300">Panele Dön</Text>
+            </TouchableOpacity>
+          </View>
         </ThemePanel>
 
         <LeaderboardView entries={finalLeaderboard} title="Final Sıralaması" />

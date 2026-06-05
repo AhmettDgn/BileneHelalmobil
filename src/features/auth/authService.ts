@@ -113,3 +113,34 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
+
+export async function updateProfile(updates: {
+  displayName?: string;
+  email?: string;
+  password?: string;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Kullanıcı bulunamadı.');
+
+  const updateData: any = {};
+
+  if (updates.displayName !== undefined) {
+    updateData.data = {
+      ...user.user_metadata,
+      display_name: updates.displayName,
+    };
+  }
+
+  if (updates.email !== undefined && updates.email !== user.email) {
+    updateData.email = updates.email;
+  }
+
+  if (updates.password !== undefined && updates.password !== '') {
+    updateData.password = updates.password;
+  }
+
+  const { data, error } = await supabase.auth.updateUser(updateData);
+  if (error) throw error;
+  return data;
+}
+

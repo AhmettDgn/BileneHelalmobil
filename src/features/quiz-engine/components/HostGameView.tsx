@@ -178,7 +178,7 @@ export function HostGameView({ gameSessionId, syncState }: Props) {
                         <View className="h-10 w-10 rounded-full bg-white/5 items-center justify-center">
                           <Text className={cn('text-sm font-bold', option.text)}>{option.label}</Text>
                         </View>
-                        <Text className="flex-1 text-base font-semibold text-white" numberOfLines={3}>
+                        <Text className="flex-1 text-base font-semibold text-white">
                           {opt}
                         </Text>
                       </View>

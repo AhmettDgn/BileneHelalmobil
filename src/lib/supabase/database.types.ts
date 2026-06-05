@@ -289,6 +289,10 @@ export type Database = {
           }>;
         };
       };
+      seed_default_quizzes_for_user: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

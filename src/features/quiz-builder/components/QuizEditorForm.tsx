@@ -208,11 +208,12 @@ export function QuizEditorForm({ existing }: Props) {
                     </TouchableOpacity>
 
                     <TextInput
-                      className="flex-1 text-sm leading-6 text-ink-strong"
+                      className="flex-1 text-sm leading-6 text-ink-strong py-1 min-h-[44px]"
                       placeholder={`Seçenek ${oIdx + 1}`}
                       placeholderTextColor={APP_THEME.warm.muted}
                       value={opt}
                       onChangeText={(v) => updateOption(editingIndex, oIdx, v)}
+                      multiline
                     />
                   </View>
                 );

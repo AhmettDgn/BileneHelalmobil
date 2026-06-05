@@ -107,12 +107,20 @@ export default function DashboardScreen() {
               <Text className="text-xs text-ink-soft">{user?.email}</Text>
             </View>
 
-            <TouchableOpacity
-              onPress={handleSignOut}
-              className="rounded-full border border-accent-rose/20 bg-white px-4 py-2.5"
-            >
-              <Text className="text-sm font-semibold text-accent-rose">Çıkış</Text>
-            </TouchableOpacity>
+            <View className="flex-row gap-2 items-center">
+              <TouchableOpacity
+                onPress={() => router.push('/(dashboard)/profile')}
+                className="rounded-full border border-accent-orange/20 bg-white px-4 py-2.5"
+              >
+                <Text className="text-sm font-semibold text-accent-orange">Profil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSignOut}
+                className="rounded-full border border-accent-rose/20 bg-white px-4 py-2.5"
+              >
+                <Text className="text-sm font-semibold text-accent-rose">Çıkış</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View className="flex-row gap-2">

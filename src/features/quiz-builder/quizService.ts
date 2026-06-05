@@ -17,9 +17,30 @@ export interface QuestionDraft {
 }
 
 export async function listQuizzes(): Promise<Quiz[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Önce kullanıcının kendi quiz sayısını kontrol et
+  const { count, error: countError } = await supabase
+    .from('quizzes')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', user.id);
+  if (countError) throw countError;
+
+  // Eğer hiç quiz'i yoksa hazır şablonları ekle
+  if (count === 0) {
+    const { error: seedError } = await supabase.rpc('seed_default_quizzes_for_user', {
+      p_user_id: user.id,
+    });
+    if (seedError) {
+      console.error('Default quiz seeding hatası:', seedError.message);
+    }
+  }
+
   const { data, error } = await supabase
     .from('quizzes')
     .select('*')
+    .eq('owner_id', user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;

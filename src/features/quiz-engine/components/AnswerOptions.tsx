@@ -105,7 +105,7 @@ export function AnswerOptions({
                 <Text className={cn('text-base font-bold', style.badgeText)}>{style.badge}</Text>
               </View>
 
-              <Text className={cn('flex-1 text-base font-semibold leading-6', style.text)} numberOfLines={3}>
+              <Text className={cn('flex-1 text-base font-semibold leading-6', style.text)}>
                 {opt}
               </Text>
 

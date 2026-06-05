@@ -84,7 +84,7 @@ export function QuestionResultsView({
                     {OPTION_LABELS[i] ?? `${i + 1}`}
                   </Text>
                 </View>
-                <Text className="flex-1 text-base font-semibold text-white" numberOfLines={3}>
+                <Text className="flex-1 text-base font-semibold text-white">
                   {opt}
                 </Text>
                 {isCorrect ? (
